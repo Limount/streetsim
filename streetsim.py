@@ -41,45 +41,10 @@ class Intersection:
 #speed 5 ft/s
 # so i guess you can divide that all by 5 and it really prett and reasonable
 
-xloc=-1.0
-yloc=-1.0
-frameRate = 40
-i1 = Intersection(50,50)
-init_time = int(time())
-dur = 0
-
-def doAnimationStep():
-	global xloc
-	global yloc
-	global i1
-	global dur
-	print i1.tmrm
-	yloc +=1.0/winY
-	xloc +=1.0/winX
-	current_time = int(time())
-	if dur!=(current_time-init_time):
-		dur= current_time-init_time
-		i1.tmrm -=1
-		if i1.tmrm==0:
-			if i1.dir>0:
-				i1.tmrm=i1.tm_x
-			else:
-				i1.tmrm=i1.tm_y
-			i1.dir= -i1.dir
-
-	
-	sleep(1/float(frameRate))
-	glutPostRedisplay()
-
-def display():
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-	glMatrixMode(GL_MODELVIEW)
-	glLoadIdentity()
-	
-	#draw intersection rectangles
-	r = i1.wd/2/winX
+def displayIntersection(i):
+	r = i.wd/2/winX
 	l = -r
-	t = i1.ht/2/winY
+	t = i.ht/2/winY
 	b = -t
 
 
@@ -91,11 +56,6 @@ def display():
 	glVertex3f(l,b,0)
 	glVertex3f(l,t,0)
 	glEnd()
-	#DRAW moving point
-	glBegin(GL_POINTS)
-	glVertex3f(xloc,yloc,0)
-	glEnd()
-
 
 	#draw lines indicating intesection direction
 	glColor3f(1,0,0)
@@ -105,7 +65,7 @@ def display():
 	glVertex3f(l,t,0)
 	#this point moves to opposite corner when the light switches
 	#at lower left when dir=0, upper right while dir=1
-	glVertex3f(i1.dir*l,i1.dir*b,0)
+	glVertex3f(i.dir*l,i.dir*b,0)
    	glEnd()
 
 	#redline2
@@ -113,43 +73,71 @@ def display():
 	glBegin(GL_LINES)
 	glVertex3f(r,b,0)
 	#this point moves to opposite corner when the light switches
-	glVertex3f(i1.dir*r,i1.dir*t,0)
+	glVertex3f(i.dir*r,i.dir*t,0)
 	glEnd()
 	
+	#green line 1
+	#based in upper right
+	glColor3f(0,1,0)
+	glBegin(GL_LINES)
+	glVertex3f(r,t,0)
+	#left top when dir=1, righ bottom when dir = =-1
+	glVertex(i.dir*l,i.dir*t,0)
+	glEnd()
+
+	#green line 2
+	#based in bottom left
+	glBegin(GL_LINES)
+	glVertex3f(l,b,0)
+	glVertex3f(i.dir*r,i.dir*b,0)
+	glEnd()
+
+	glColor3f(0,0,0)
+	glWindowPos3f(winX/2-5,winY/2-5,0)
+	glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,ord(str(i.tmrm)))
+
+
+
+
+def doAnimationStep():
+	global Intersections
+	i= Intersections[0]
+	global dur
+	current_time = int(time())
+	if dur!=(current_time-init_time):
+		dur= current_time-init_time
+		i.tmrm -=1
+		if i.tmrm==-1:
+			if i.dir>0:
+				i.tmrm=i1.tm_x
+			else:
+				i.tmrm=i1.tm_y
+			i.dir= -i.dir
+
+	
+	sleep(1/float(frameRate))
+	glutPostRedisplay()
+
+def display():
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+	glMatrixMode(GL_MODELVIEW)
+	glLoadIdentity()
+	
+	#draw intersection rectangles
+	for i in Intersections:
+		displayIntersection(i)
+
 
 	glutSwapBuffers()
 
+frameRate = 20
+init_time = int(time())
+dur = 0
 
+#initialize set of intersections
+Intersections =[]
+Intersections.append(Intersection(50,50))
 
-#Define the coordinates of the intersections
-inter_coords = np.zeros((5,5,2))
-for i in range(0,5):
-  for j in range(0,5):
-    inter_coords[i][j]=[i,j]
-#later we will take a file to import, this is default
-map_x = inter_coords.shape[0]
-map_y = inter_coords.shape[1]
-
-#print(is_coords)
-
-#define the timing of each light
-light_tm = np.zeros((map_x,map_y,2))
-for i in range(0,map_x):
-  for j in range(0,map_y):
-    light_tm[i][j] = [30,30]
-#later we will take a file in import, this is default
-
-#print(light_tm)
-
-
-#randomly define which direction the light allows first and the time remaining
-light_init = np.zeros((map_x,map_y,2))
-for i in range(0,map_x):
-  for j in range(0,map_y):
-    light_dir = randint(2)
-    light_init[i][j] = [light_dir,randint(light_tm[i][j][light_dir])]
-
-#print(light_init)
 
 #initialize the window
 def init():
