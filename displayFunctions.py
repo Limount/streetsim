@@ -1,5 +1,17 @@
 
 
+def drawFilledCircle(x, y, radius):
+	triangleAmount = 10
+	tau = 2.0 * np.pi
+	print 'hey'
+	glBegin(GL_TRIANGLE_FAN)
+	glVertex2f(x, y)
+	for i in range(triangleAmount):
+			glVertex2f(x + (radius * np.cos(i *  tau / triangleAmount)),y + (radius * np.sin(i * tau / triangleAmount)))
+	glEnd()
+
+
+
 def displayIntersection(i):
 	#define the corners of the intersection using the xy coordinates and
 	#the height and width of the intersction
@@ -21,6 +33,21 @@ def displayIntersection(i):
 	glVertex3f(l+x,b+y,0)
 	glVertex3f(l+x,t+y,0)
 	glEnd()
+
+	if i.dir>0:
+		glColor3f(1,0,0)
+	else:
+		glColor3f(0,1,0)
+
+	drawFilledCircle(x,y+t,5)
+	drawFilledCircle(x,y+b,5)
+
+	if i.dir>0:
+		glColor3f(0,1,0)
+	else:
+		glColor3f(1,0,0)
+	drawFilledCircle(x+r,y,5)
+	drawFilledCircle(x+l,y,5)
 
 	#draw lines indicating intesection direction
 	glColor3f(1,0,0)
