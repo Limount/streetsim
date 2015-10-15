@@ -45,12 +45,5 @@ class Intersection:
 		self.se = Corner(self.x+self.wd/2,self.y-self.ht/2)
 		self.nw = Corner(self.x-self.wd/2,self.y+self.ht/2)
 		self.sw = Corner(self.x-self.wd/2,self.y-self.ht/2)
-		#the four corners of the intersection recalculated to fit in the normalized window
-		self.x_trans = self.x/(winX/2)-1
-		self.y_trans = self.y/(winY/2)-1
-		self.ne_trans = Corner(self.ne.x/(winX/2)-1,self.ne.y/(winY/2)-1)
-		self.se_trans = Corner(self.se.x/(winX/2)-1,self.se.y/(winY/2)-1)
-		self.nw_trans = Corner(self.nw.x/(winX/2)-1,self.nw.y/(winY/2)-1)
-		self.sw_trans = Corner(self.sw.x/(winX/2)-1,self.sw.y/(winY/2)-1)
 		self.init_tm = self.tmrm
 
