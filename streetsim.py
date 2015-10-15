@@ -56,7 +56,7 @@ def display():
     # draw intersection rectangles
     for street in Intersections:
         for i in street:
-            displayIntersection(i, winX, winY)
+            displayIntersection(i)
 
     displayVehicles(Vehicles)
     #more GL related stuff i dont really understad
