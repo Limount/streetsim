@@ -1,5 +1,8 @@
 
 
-frameRate = 20
-winX = 800
-winY = 800
+FRAME_RATE = 1
+WIN_X = 400
+WIN_Y = 400
+INT_ID = 1
+
+

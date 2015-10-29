@@ -1,15 +1,15 @@
 from OpenGL.GLUT import *
 from OpenGL.GL import *
 import numpy as np
-from globalvars import winY, winX, frameRate
+from globalvars import WIN_Y,WIN_X,FRAME_RATE,INT_ID
 from classdefs import *
 from time import sleep
 
 
 # gl wants us to give verteces in the range [-1,1] where 0,0 is the center of the window.
-# to keep us a little more sane, we keep the dimensions in a [0,winX],[0,winY] ranges and transform them here
+# to keep us a little more sane, we keep the dimensions in a [0,WIN_X],[0,winY] ranges and transform them here
 def vertex(x, y):
-    glVertex3f(float(x) / (winX / 2) - 1, float(y) / (winY / 2) - 1, 0)
+    glVertex3f(float(x) / (WIN_X / 2) - 1, float(y) / (WIN_Y/ 2) - 1, 0)
 
 
 def drawFilledCircle(x, y, radius=3.0):
@@ -56,11 +56,11 @@ def displayIntersection(i):
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
 
 
-def displayDashedLine(a, b, dashLength=10.0, dashGap=5.0):
-    # we draw the dashed line by finding the slope between the two points
-    # and then iteratively drawing a set of line segments between those two points
+def displayDashedLine(a,b, dashLength=10.0, dashGap=5.0):
 
-    # cant calculate slope when the points are vertical
+    point_dx = b.x-a.x
+    point_dy = b.y-a.y
+
     if b.x == a.x:
         # length of each dash in the x direction
         dx_d = 0
@@ -71,13 +71,23 @@ def displayDashedLine(a, b, dashLength=10.0, dashGap=5.0):
         # length between the beginning of one dash to the beginning of the next dash in the y direction
         dy_t = dashLength + dashGap
     else:
-        slope = (b.y - a.y) / (b.x - a.x)
-        dx_d = np.sqrt((dashLength ** 2) / 1 + (slope ** 2))
-        dy_d = slope * dx_d
-        dx_t = dx_d + np.sqrt((dashGap ** 2) / 1 + (slope ** 2))
-        dy_t = dy_d + slope * dx_d
-    # find the number of full dashes to be drawin
-    totalLineDistance = np.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
+        dx_d = dashLength / np.sqrt(1+(point_dy/point_dx)**2)
+        #a little mathematical oddity. We lose our important negative sign in the squaring
+        if point_dx<0:
+            dx_d = -dx_d
+        dy_d = (point_dy/point_dx)*dx_d
+
+        dx_t = (dashLength+dashGap) / np.sqrt(1+(point_dy/point_dx)**2)
+        if point_dx<0:
+            dx_t = -dx_t
+        dy_t = (point_dy/point_dx)*dx_t
+
+    # we draw the dashed line by finding the slope between the two points
+    # and then iteratively drawing a set of line segments between those two points
+
+
+    # find the number of full dashes to be drawn
+    totalLineDistance = np.sqrt((point_dx) ** 2 + (point_dy) ** 2)
     dashCount = int(totalLineDistance / (dashLength + dashGap))
     # draw the dashes using x,y as the the moving start point and x+dx_d,y+dx_y as the end points
     x = a.x
@@ -102,55 +112,46 @@ def displayDashedLine(a, b, dashLength=10.0, dashGap=5.0):
         glEnd()
 
 
-# At this point I am try to keep this such that roads to not need to be perfectly all right angles
-def displayRoadHorizontal(i1, i2):
+def displayRoad(i1, i2, width = 10):
+    if (i1.x < i2.x) or (i1.x == i2.x and i1.y < i2.y):
+        a = Point(i1.x,i1.y)
+        b = Point(i2.x,i2.y)
+    else:
+        a = Point(i2.x,i2.y)
+        b = Point(i1.x,i1.y)
     glColor3f(0.5, 0.25, 0)
+    print 'a',a.x,a.y
+    print 'b',b.x,b.y
+    if a.x==b.x:
+        dx = width
+        dy = 0
+    else:
+
+        slope = (b.y-a.y)/(b.x-a.x)
+        t1 = np.arctan(slope)
+        t2 = np.pi/2 - t1
+        dx = width*np.sin(t1)
+        dy = width*np.sin(t2)
+
     glBegin(GL_QUADS)
-    vertex(i1.ne.x, i1.ne.y)
-    vertex(i2.nw.x, i2.nw.y)
-    vertex(i2.sw.x, i2.sw.y)
-    vertex(i1.se.x, i1.se.y)
+    vertex(a.x-dx, a.y+dy)
+    vertex(a.x+dx, a.y-dy)
+    vertex(b.x+dx, b.y-dy)
+    vertex(b.x-dx, b.y+dy)
     glEnd()
-
-    # display the center dashed line
-    # note that we don't give the translated points
-    a = Corner((i1.ne.x + i1.se.x) / 2, (i1.ne.y + i1.se.y) / 2)
-    b = Corner((i2.nw.x + i2.sw.x) / 2, (i2.nw.y + i2.sw.y) / 2)
-
     glColor3f(1, 1, 0)
     displayDashedLine(a, b)
 
-
-def displayRoadVertical(i1, i2):
-    glColor3f(0.5, 0.25, 0)
-    glBegin(GL_QUADS)
-    vertex(i1.ne.x, i1.ne.y)
-    vertex(i2.se.x, i2.se.y)
-    vertex(i2.sw.x, i2.sw.y)
-    vertex(i1.nw.x, i1.nw.y)
-    glEnd()
-
-    a = Corner((i1.nw.x + i1.ne.x) / 2, (i1.nw.y + i1.ne.y) / 2)
-    b = Corner((i2.sw.x + i2.se.x) / 2, (i2.sw.y + i2.se.y) / 2)
-
-    glColor3f(1, 1, 0)
-    displayDashedLine(a, b)
-
-
-def displayRoads(Intersections):
-    # displayRoadVertical(Intersections[2][3],Intersections[3][3])
-    for i in range(1, len(Intersections[0])):
-        for j in range(0, len(Intersections)):
-            displayRoadVertical(Intersections[i - 1][j], Intersections[i][j])
-            #
-    for i in range(0, len(Intersections[0])):
-        for j in range(1, len(Intersections)):
-            displayRoadHorizontal(Intersections[i][j - 1], Intersections[i][j])
+def displayRoads(map):
+    i = 0
+    for road in map.edges_iter():
+        i += 1
+        print i
+        displayRoad(road[0],road[1])
 
 
 def displayVehicles(Vehicles):
     for v in Vehicles:
-        print v.y, v.x
         glColor3f(0, 0, 1)
         glBegin(GL_QUADS)
         vertex(v.x + 8, v.y + 8)
