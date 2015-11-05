@@ -40,7 +40,7 @@ class Network:
 
 
 class Intersection:
-    def __init__(self,x,y,tm_x=30,tm_y=30):
+    def __init__(self,x,y,tm_x=30,tm_y=30, width=15):
         #important to use integers here and not a list of length two because of the immutable object problem that i dont fully understand
         self.tm_x = tm_x
         self.tm_y = tm_y
@@ -54,6 +54,6 @@ class Intersection:
         #center of the intersection
         self.x = float(x)
         self.y = float(y)
-        self.cx_dist = {}
+        self.width = width
 
 

@@ -23,15 +23,12 @@ def drawFilledCircle(x, y, radius=3.0):
     glEnd()
 
 
-def displayIntersection(i):
+def displayIntersection(i, neighbors):
+    edge_ct = len(neighbors)
     # draw the white background of the intersection
     glColor3f(1, 1, 1)
-    glBegin(GL_QUADS)
-    vertex(i.ne.x, i.ne.y)
-    vertex(i.se.x, i.se.y)
-    vertex(i.sw.x, i.sw.y)
-    vertex(i.nw.x, i.nw.y)
-    glEnd()
+
+    #the intersection consists of edges perpendicular to the connected roads i.width distance from the the centerpoint
 
     # draw the top and bottom circles.
     # switch color between red and green depending on the the current state of dir in the intersection class
@@ -146,7 +143,6 @@ def displayRoads(map):
     i = 0
     for road in map.edges_iter():
         i += 1
-        print i
         displayRoad(road[0],road[1])
 
 
