@@ -12,7 +12,6 @@ from time import time
 from classdefs import *
 from displayFunctions import *
 from globalvars import WIN_X,WIN_Y,FRAME_RATE
-import networkx as nx
 
 ## some API in the chain is translating the keystrokes to this octal string
 # so instead of saying ESCAPE=27, we use the following
@@ -28,6 +27,7 @@ def doAnimationStep():
     #the following IF will be run once every second.
     if dur != (current_time - init_time):
         dur = current_time - init_time
+        if dur%10 == 0: map.add_vehicle()
         #iterate through each intersection in the network to see which lights need to be switched
         # for street in Intersections:
         #     for i in street:
@@ -38,10 +38,16 @@ def doAnimationStep():
         #             else:
         #                 i.tmrm = i.tm_y
         #             i.dir = -i.dir
-        for v in Vehicles:
-            v.y+=v.speed
+    for v in map.Vehicles:
+        if v.active:
+            v.update()
+        else:
+            map.Vehicles.remove(v)
+            map.add_vehicle()
+
     #sleep pauses the program the given number of seconds. Waiting 1/frameRate means doAnimationStep will run roughly frameRate times a second (slightly lower for processing time)
     sleep(1 / float(FRAME_RATE))
+
     glutPostRedisplay()
 
 
@@ -60,7 +66,7 @@ def display():
     #     for i in street:
     #         displayIntersection(i)
 
-    displayVehicles(Vehicles)
+    displayVehicles(map)
     #more GL related stuff i dont really understad
     glutSwapBuffers()
 
@@ -110,8 +116,8 @@ def add_network_attributes(map):
                 if map[i1][i2]['angle']==angles[i]:
                     ints_by_angle.append(i2)
 
-        print len(angles) == len(ints_by_angle)
-
+        # print len(angles) == len(ints_by_angle)
+        #TODO: angles are not accurate
         map.node[i1]['cnx']=[None,None]
         if len(angles)==1:
             map.node[i1]['cnx'][0] = ints_by_angle[0]
@@ -182,8 +188,7 @@ map.add_edge(Is[6],Is[1])
 #give each edge a distance attribute using the coordinates of each intersection
 add_network_attributes(map)
 
-
-Vehicles = [Vehicle(),Vehicle(120,100)]
+Vehicles = [map.add_vehicle()]
 
 # initialize the window
 def init():

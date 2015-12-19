@@ -117,8 +117,7 @@ def displayRoad(i1, i2, width = 10):
         a = Point(i2.x,i2.y)
         b = Point(i1.x,i1.y)
     glColor3f(0.5, 0.25, 0)
-    print 'a',a.x,a.y
-    print 'b',b.x,b.y
+
     if a.x==b.x:
         dx = width
         dy = 0
@@ -146,8 +145,8 @@ def displayRoads(map):
         displayRoad(road[0],road[1])
 
 
-def displayVehicles(Vehicles):
-    for v in Vehicles:
+def displayVehicles(map):
+    for v in map.Vehicles:
         glColor3f(0, 0, 1)
         glBegin(GL_QUADS)
         vertex(v.x + 8, v.y + 8)

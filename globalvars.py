@@ -1,8 +1,8 @@
 
-
-FRAME_RATE = 1
+INT_ID = 1
+FRAME_RATE = 30
 WIN_X = 600
 WIN_Y = 400
-INT_ID = 1
+
 
 
