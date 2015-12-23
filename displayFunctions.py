@@ -143,14 +143,21 @@ def displayRoads(map):
     for road in map.edges_iter():
         i += 1
         displayRoad(road[0],road[1])
+    glColor3f(1, 1, 1)
+
+    for i in map.nodes():
+        glWindowPos3f(i.x - 7, i.y - 5, 0)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(str(i.id)))
 
 
 def displayVehicles(map):
+    road_width = 10
     for v in map.Vehicles:
         glColor3f(0, 0, 1)
-        glBegin(GL_QUADS)
-        vertex(v.x + 8, v.y + 8)
-        vertex(v.x + 8, v.y - 8)
-        vertex(v.x - 8, v.y - 8)
-        vertex(v.x - 8, v.y + 8)
-        glEnd()
+        # shift vehicle to the right side of the road
+        shift_angle = map[v.prev_int][v.next_int]['angle'] - np.pi/2
+        if shift_angle < 0: shift_angle += np.pi * 2
+        new_x = (road_width/2) * np.cos(shift_angle) + v.x
+        new_y = (road_width/2) * np.sin(shift_angle) + v.y
+
+        drawFilledCircle(new_x,new_y)

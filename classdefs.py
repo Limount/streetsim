@@ -19,7 +19,7 @@ class Vehicle:
            self.dx = -self.dx
         self.dy = (self.next_int.y-self.prev_int.y)/(self.next_int.x-self.prev_int.x)*self.dx
 
-    def __init__(self, origin, destination, route, speed=2):
+    def __init__(self, origin, destination, route, max_speed=2):
 
         self.origin = origin
         self.destination = destination
@@ -27,7 +27,8 @@ class Vehicle:
         self.prev_int = origin
         self.next_int = route[1]
         self.road_ct = 1
-        self.speed = speed
+        self.max_speed = max_speed
+        self.speed = 0
         self.active = 1
         self.x = origin.x
         self.y = origin.y
@@ -51,6 +52,7 @@ class Vehicle:
                 self.next_int = self.route[self.road_ct]
                 self.find_vehicle_deltas()
         else:
+
             self.x += self.dx
             self.y += self.dy
 
@@ -110,5 +112,5 @@ def add_vehicle(self, origin=None, destination=None):
         print v.id, v.x,v.y
 
 
-nx.Graph.add_vehicle = add_vehicle
-nx.Graph.Vehicles = []
+nx.DiGraph.add_vehicle = add_vehicle
+nx.DiGraph.Vehicles = []

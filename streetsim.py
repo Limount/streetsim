@@ -82,16 +82,24 @@ def add_network_attributes(map):
 
             map[i1][i2]['distance']= np.sqrt((x1-x2)**2 + (y1-y2)**2)
             # calculating the angle is oddly difficult. Maybe I'm missing a simple method
+
             if x1 == x2 and y2>y1:
-                map[i1][i2]['angle'] = np.pi/2
+                map[i1][i2]['angle'] = 0
             if x1 == x2 and y2<y1:
-                map[i1][i2]['angle'] = -np.pi/2
+                map[i1][i2]['angle'] = np.pi
             if x2>x1 and y2>=y1:
                 map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1))
             if x2>x1 and y2<y1:
                 map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi*2
             if x2<x1:
                 map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi
+
+
+            print 'from: ',i1.id,i1.x,i1.y
+            print 'to: ',i2.id,i2.x,i2.y
+            print 'angle: ',map[i1][i2]['angle']
+            print ' '
+
 
         # now I want to match up through ways. ie, when going straight, which road goes to which road
 
@@ -169,26 +177,33 @@ Is = [Intersection(100,100),
       Intersection(300,300),
       Intersection(440,300),
       Intersection(520,80),
-      Intersection(200,50)]
+      Intersection(200,50),
+      Intersection(110,280)]
 #once you have created your full list of Intersections, then you can add the paths between them.
 # this does not feel like ideal programming practice, but I can't figure out the best way to do this
 
+def two_way_edge(map,i1,i2):
+    map.add_edge(i1,i2)
+    map.add_edge(i2,i1)
 
-map = nx.Graph()
+
+map = nx.DiGraph()
 #add roads that connect the intersections
-map.add_edge(Is[0],Is[1])
-map.add_edge(Is[1],Is[2])
-map.add_edge(Is[1],Is[3])
-map.add_edge(Is[2],Is[4])
-map.add_edge(Is[2],Is[5])
-map.add_edge(Is[3],Is[4])
-map.add_edge(Is[4],Is[5])
-map.add_edge(Is[6],Is[5])
-map.add_edge(Is[6],Is[1])
+two_way_edge(map,Is[0],Is[1])
+two_way_edge(map,Is[1],Is[2])
+two_way_edge(map,Is[1],Is[3])
+two_way_edge(map,Is[2],Is[4])
+two_way_edge(map,Is[2],Is[5])
+two_way_edge(map,Is[3],Is[4])
+two_way_edge(map,Is[4],Is[5])
+two_way_edge(map,Is[6],Is[5])
+two_way_edge(map,Is[6],Is[1])
+two_way_edge(map,Is[7],Is[0])
+two_way_edge(map,Is[7],Is[3])
 #give each edge a distance attribute using the coordinates of each intersection
 add_network_attributes(map)
 
-Vehicles = [map.add_vehicle()]
+map.add_vehicle()
 
 # initialize the window
 def init():
