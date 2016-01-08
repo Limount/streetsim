@@ -152,6 +152,7 @@ def displayRoads(map):
 
 def displayVehicles(map):
     road_width = 10
+
     for v in map.Vehicles:
         glColor3f(0, 0, 1)
         # shift vehicle to the right side of the road
@@ -159,5 +160,30 @@ def displayVehicles(map):
         if shift_angle < 0: shift_angle += np.pi * 2
         new_x = (road_width/2) * np.cos(shift_angle) + v.x
         new_y = (road_width/2) * np.sin(shift_angle) + v.y
-
         drawFilledCircle(new_x,new_y)
+
+def displayTrafficLights(map):
+    light_size = 3
+    from_int_center = 10
+    for i in map.nodes():
+        glColor3f(1,1,1)
+        glWindowPos3f(i.x - 7, i.y - 25, 0)
+        for c in str(i.tmrm):
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
+
+        for go_int in map.node[i]['cnx'][i.dir]:
+            glColor3f(1, 0, 0)
+            angle = map[i][go_int]['angle']
+            new_x = from_int_center * np.cos(angle) + i.x
+            new_y = from_int_center * np.sin(angle) + i.y
+            drawFilledCircle(new_x,new_y,light_size)
+        if i.dir == 1: hey = 0
+        if i.dir == 0: hey = 1
+        for stop_int in map.node[i]['cnx'][hey]:
+
+            glColor3f(0, 1, 0)
+            angle = map[i][stop_int]['angle']
+            new_x = from_int_center * np.cos(angle) + i.x
+            new_y = from_int_center * np.sin(angle) + i.y
+            drawFilledCircle(new_x,new_y,light_size)
+

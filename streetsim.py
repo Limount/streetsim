@@ -17,38 +17,56 @@ from globalvars import WIN_X,WIN_Y,FRAME_RATE
 # so instead of saying ESCAPE=27, we use the following
 #   -from the pyopengl demo files
 ESCAPE = '\033'
+SPACEBAR = '\040'
 
 #this function is run continuously, as specified by glutIdleFunc
 def doAnimationStep():
     global Intersections
     global dur
     #current time with a one second precision
-    current_time = int(time())
-    #the following IF will be run once every second.
-    if dur != (current_time - init_time):
-        dur = current_time - init_time
-        if dur%10 == 0: map.add_vehicle()
-        #iterate through each intersection in the network to see which lights need to be switched
-        # for street in Intersections:
-        #     for i in street:
-        #         i.tmrm -= 1
-        #         if i.tmrm == -1:
-        #             if i.dir > 0:
-        #                 i.tmrm = i.tm_x
-        #             else:
-        #                 i.tmrm = i.tm_y
-        #             i.dir = -i.dir
-    for v in map.Vehicles:
-        if v.active:
-            v.update()
-        else:
-            map.Vehicles.remove(v)
-            map.add_vehicle()
+    if not pause:
+        current_time = int(time())
+        #the following IF will be run once every second.
+        if dur != (current_time - init_time):
+            dur = current_time - init_time
+            #iterate through each intersection in the network to see which lights need to be switched
+            # for street in Intersections:
+            for i in map.nodes():
+                i.tmrm -= 1
+                if i.tmrm == -1:
+                    # switch the go and stop intersections
+                    #map.node[i]['cnx'][0], map.node[i]['cnx'][1] = map.node[i]['cnx'][1], map.node[i]['cnx'][0]
+                    if i.dir > 0:
+                        i.dir = 0
+                    else:
+                        i.dir = 1
 
-    #sleep pauses the program the given number of seconds. Waiting 1/frameRate means doAnimationStep will run roughly frameRate times a second (slightly lower for processing time)
-    sleep(1 / float(FRAME_RATE))
+                    i.tmrm = i.tm[i.dir]
+        for v in map.Vehicles:
+            # check for red light
+            if v.prev_int in map.node[v.next_int]['cnx'][v.next_int.dir]:
+                v.incoming_red = 1
+            else:
+                v.incoming_red = 0
 
-    glutPostRedisplay()
+            if v.active:
+                v.update()
+            else:
+                map.Vehicles.remove(v)
+                map.add_vehicle()
+
+        #sleep pauses the program the given number of seconds. Waiting 1/frameRate means doAnimationStep will run roughly frameRate times a second (slightly lower for processing time)
+        sleep(1 / float(FRAME_RATE))
+
+        glutPostRedisplay()
+
+
+def keyPressed(*args):
+    global pause
+    global init_time
+    if args[0] == SPACEBAR:
+        pause = not pause
+        #TODO the way my timing is set up, the timing gets a little messed up (adding/subtracting a fraction of a second). Not major, but the timing system should be refactored at some point
 
 
 def display():
@@ -65,7 +83,7 @@ def display():
     # for street in Intersections:
     #     for i in street:
     #         displayIntersection(i)
-
+    displayTrafficLights(map)
     displayVehicles(map)
     #more GL related stuff i dont really understad
     glutSwapBuffers()
@@ -95,10 +113,10 @@ def add_network_attributes(map):
                 map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi
 
 
-            print 'from: ',i1.id,i1.x,i1.y
-            print 'to: ',i2.id,i2.x,i2.y
-            print 'angle: ',map[i1][i2]['angle']
-            print ' '
+            # print 'from: ',i1.id,i1.x,i1.y
+            # print 'to: ',i2.id,i2.x,i2.y
+            # print 'angle: ',map[i1][i2]['angle']
+            # print ' '
 
 
         # now I want to match up through ways. ie, when going straight, which road goes to which road
@@ -119,36 +137,36 @@ def add_network_attributes(map):
         #using the sorted angles we're going to create a list of the interesections sorted by angle
         #note that is this legal because we have already proved that all the angles are distinct
         ints_by_angle = []
-        for i2 in map.neighbors(i1):
-            for i in range(len(angles)):
+
+        for i in range(len(angles)):
+            for i2 in map.neighbors(i1):
                 if map[i1][i2]['angle']==angles[i]:
                     ints_by_angle.append(i2)
 
-        # print len(angles) == len(ints_by_angle)
-        #TODO: angles are not accurate
         map.node[i1]['cnx']=[None,None]
+
         if len(angles)==1:
-            map.node[i1]['cnx'][0] = ints_by_angle[0]
+            map.node[i1]['cnx'][0] = [ints_by_angle[0]]
         elif len(angles)==2:
             #if the angle between the roads are between 2pi/3 and 4pi/3 then it is a str8 road with lighted crosswalk
             #else they take turns going through the intersection
             if 2*np.pi/3 < (angles[1]-angles[0]) < 4*np.pi/3:
                 map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
             else:
-                map.node[i1]['cnx'][0] = ints_by_angle[0]
-                map.node[i1]['cnx'][1] = ints_by_angle[1]
+                map.node[i1]['cnx'][0] = [ints_by_angle[0]]
+                map.node[i1]['cnx'][1] = [ints_by_angle[1]]
 
         elif len(angles)==3:
             #when there are three in an intersection, the two that have the greatest angle between them become connected
-            if ((angles[1]-angles[0]) >= (angles[2]-angles[1]) >= (2*np.pi + (angles[0]-angles[2]))):
+            if (angles[1]-angles[0]) >= np.maximum((angles[2]-angles[1]),(2*np.pi + (angles[0]-angles[2]))):
                 map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
-                map.node[i1]['cnx'][1] = ints_by_angle[2]
-            elif ((angles[2]-angles[1]) >= (2*np.pi + (angles[0]-angles[2])) >= (angles[1]-angles[0])):
+                map.node[i1]['cnx'][1] = [ints_by_angle[2]]
+            elif (angles[2]-angles[1]) >= np.maximum((2*np.pi + (angles[0]-angles[2])),(angles[1]-angles[0])):
                 map.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[2]]
-                map.node[i1]['cnx'][1] = ints_by_angle[0]
+                map.node[i1]['cnx'][1] = [ints_by_angle[0]]
             else:
                 map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[2]]
-                map.node[i1]['cnx'][1] = ints_by_angle[1]
+                map.node[i1]['cnx'][1] = [ints_by_angle[1]]
         elif len(angles)==4:
             map.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[3]]
             map.node[i1]['cnx'][1] = [ints_by_angle[0],ints_by_angle[2]]
@@ -161,8 +179,17 @@ def add_network_attributes(map):
 
     #End add_network_attributes()
 
+# def init_traffic_lights(map):
+#     for i in map.nodes():
+#         i.tm = [30,20]
+#         i.dir = randint(2)
+#         i.tmrm = i.tm[i.dir]
+
+
+
 init_time = int(time())
 dur = 0
+pause = False
 
 # Network = {'a':Intersection(50,50),
 #            'b':Intersection(110,50),
@@ -203,6 +230,8 @@ two_way_edge(map,Is[7],Is[3])
 #give each edge a distance attribute using the coordinates of each intersection
 add_network_attributes(map)
 
+
+
 map.add_vehicle()
 
 # initialize the window
@@ -218,5 +247,6 @@ glutInitWindowSize(WIN_X,WIN_Y)
 glutCreateWindow(sys.argv[0])
 init()
 glutDisplayFunc(display)
+glutKeyboardFunc(keyPressed)
 glutIdleFunc(doAnimationStep)
 glutMainLoop()
