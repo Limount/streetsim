@@ -12,6 +12,8 @@ from time import time
 from classdefs import *
 from displayFunctions import *
 from globalvars import WIN_X,WIN_Y,FRAME_RATE
+import pandas as pd
+
 
 ## some API in the chain is translating the keystrokes to this octal string
 # so instead of saying ESCAPE=27, we use the following
@@ -21,8 +23,9 @@ SPACEBAR = '\040'
 
 #this function is run continuously, as specified by glutIdleFunc
 def doAnimationStep():
-    global Intersections
+    global map
     global dur
+    global pause
     #current time with a one second precision
     if not pause:
         current_time = int(time())
@@ -52,7 +55,10 @@ def doAnimationStep():
             if v.active:
                 v.update()
             else:
+                times.append(time() - v.init_time)
+                distances.append(v.distance_traveled)
                 map.Vehicles.remove(v)
+
                 map.add_vehicle()
 
         #sleep pauses the program the given number of seconds. Waiting 1/frameRate means doAnimationStep will run roughly frameRate times a second (slightly lower for processing time)
@@ -67,7 +73,13 @@ def keyPressed(*args):
     if args[0] == SPACEBAR:
         pause = not pause
         #TODO the way my timing is set up, the timing gets a little messed up (adding/subtracting a fraction of a second). Not major, but the timing system should be refactored at some point
-
+    if args[0] == ESCAPE:
+        d = {'distance': distances, 'time': times}
+        results = pd.DataFrame(d)
+        print 'Average time: ', results['time'].mean()
+        print 'Average speed: ', (results['distance'].mean() / results['time'].mean())
+        results.to_csv('results.csv')
+        quit()
 
 def display():
     #GL related stuff that I dont really understand
@@ -78,11 +90,7 @@ def display():
     global WIN_X,WIN_Y
     #Output all the roads, using the intersections to deduce where the roads are
     displayRoads(map)
-    # draw intersection rectangles
-    # GOING TO WAIT ON THIS, GET ROADS FIRST
-    # for street in Intersections:
-    #     for i in street:
-    #         displayIntersection(i)
+
     displayTrafficLights(map)
     displayVehicles(map)
     #more GL related stuff i dont really understad
@@ -112,12 +120,11 @@ def add_network_attributes(map):
             if x2<x1:
                 map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi
 
-
-            # print 'from: ',i1.id,i1.x,i1.y
-            # print 'to: ',i2.id,i2.x,i2.y
-            # print 'angle: ',map[i1][i2]['angle']
-            # print ' '
-
+            #identify the nodes that have a two way street between them
+            if i1 in map.neighbors(i2):
+                map[i1][i2]['symmetric'] = True
+            else:
+                map[i1][i2]['symmetric'] = False
 
         # now I want to match up through ways. ie, when going straight, which road goes to which road
 
@@ -177,26 +184,16 @@ def add_network_attributes(map):
             raise ValueError('One of your intersections has >4 roads coming out of it')
 
 
+
+
+
+
     #End add_network_attributes()
-
-# def init_traffic_lights(map):
-#     for i in map.nodes():
-#         i.tm = [30,20]
-#         i.dir = randint(2)
-#         i.tmrm = i.tm[i.dir]
-
 
 
 init_time = int(time())
 dur = 0
 pause = False
-
-# Network = {'a':Intersection(50,50),
-#            'b':Intersection(110,50),
-#            'c':Intersection(200,80),
-#            'd':Intersection(150,150),
-#            'e':Intersection(220,150),
-#            'f':Intersection(260,40)}
 
 Is = [Intersection(100,100),
       Intersection(220,100),
@@ -213,11 +210,17 @@ def two_way_edge(map,i1,i2):
     map.add_edge(i1,i2)
     map.add_edge(i2,i1)
 
+times = []
+distances = []
+
+
+
 
 map = nx.DiGraph()
 #add roads that connect the intersections
 two_way_edge(map,Is[0],Is[1])
-two_way_edge(map,Is[1],Is[2])
+#two_way_edge(map,Is[1],Is[2])
+map.add_edge(Is[1],Is[2])
 two_way_edge(map,Is[1],Is[3])
 two_way_edge(map,Is[2],Is[4])
 two_way_edge(map,Is[2],Is[5])
@@ -231,8 +234,8 @@ two_way_edge(map,Is[7],Is[3])
 add_network_attributes(map)
 
 
-
-map.add_vehicle()
+for i in range(10):
+    map.add_vehicle()
 
 # initialize the window
 def init():

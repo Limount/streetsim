@@ -3,6 +3,7 @@ from numpy import sqrt
 import globalvars
 import networkx as nx
 import numpy as np
+from time import time
 
 class Point:
     def __init__(self, x, y):
@@ -19,7 +20,7 @@ class Vehicle:
             self.dx = -self.dx
         self.dy = (self.next_int.y-self.prev_int.y)/(self.next_int.x-self.prev_int.x)*self.dx
 
-    def __init__(self, origin, destination, route, max_speed=2):
+    def __init__(self, origin, destination, route, total_distance, max_speed=2):
 
         self.origin = origin
         self.destination = destination
@@ -35,6 +36,9 @@ class Vehicle:
         self.find_vehicle_deltas()
         self.incoming_red = 0
 
+        self.init_time = time()
+        self.distance_traveled = total_distance
+
     def update(self):
 
         if ( (self.dx>0 and self.dy >=0 and ((self.x+self.dx)>self.next_int.x)) #quadrant 1
@@ -42,11 +46,9 @@ class Vehicle:
         | (self.dx < 0 and self.dy <= 0 and ((self.x+self.dx)<self.next_int.x)) #quandrant 3
         | (self.dx >= 0 and self.dy < 0 and ((self.y+self.dy)<self.next_int.y)) ): #quandrant 4
             if self.incoming_red:
-                print 'redlight'
                 self.speed = 0
                 self.find_vehicle_deltas()
             else:
-                print 'green light'
                 self.x = self.next_int.x
                 self.y = self.next_int.y
                 if self.next_int == self.destination:
@@ -82,13 +84,16 @@ class Intersection:
 
 # Add vehicle attributes to the NetworkX.Graph class
 def add_vehicle(self, origin=None, destination=None):
-
     if origin is None:
         origin = choice([x for x in self.nodes() if x !=destination])
     if destination is None:
         destination = choice([x for x in self.nodes() if x !=origin])
     route = nx.dijkstra_path(self,origin,destination,'distance')
-    self.Vehicles.append(Vehicle(origin,destination,route))
+    total_distance = 0
+    for i in range(len(route)-1):
+        total_distance += self[route[i]][route[i+1]]['distance']
+    self.Vehicles.append(Vehicle(origin,destination,route,total_distance))
+
     print 'from ', origin.id, ' to ', destination.id
     r_id = []
     for i in route:

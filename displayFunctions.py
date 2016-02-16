@@ -3,7 +3,7 @@ from OpenGL.GL import *
 import numpy as np
 from globalvars import WIN_Y,WIN_X,FRAME_RATE,INT_ID
 from classdefs import *
-from time import sleep
+from time import sleep, time
 
 
 # gl wants us to give verteces in the range [-1,1] where 0,0 is the center of the window.
@@ -109,40 +109,48 @@ def displayDashedLine(a,b, dashLength=10.0, dashGap=5.0):
         glEnd()
 
 
-def displayRoad(i1, i2, width = 10):
-    if (i1.x < i2.x) or (i1.x == i2.x and i1.y < i2.y):
-        a = Point(i1.x,i1.y)
-        b = Point(i2.x,i2.y)
-    else:
-        a = Point(i2.x,i2.y)
-        b = Point(i1.x,i1.y)
+def displayRoad(i1, i2, angle, width = 10):
+
+    theta = angle - np.pi/2
+    if theta < 0: theta += 2*np.pi
+
     glColor3f(0.5, 0.25, 0)
 
-    if a.x==b.x:
-        dx = width
-        dy = 0
-    else:
-
-        slope = (b.y-a.y)/(b.x-a.x)
-        t1 = np.arctan(slope)
-        t2 = np.pi/2 - t1
-        dx = width*np.sin(t1)
-        dy = width*np.sin(t2)
+    # slope = (b.y-a.y)/(b.x-a.x)
+    # t1 = np.arctan(slope)
+    # t2 = np.pi/2 - t1
+    # dx = width*np.sin(t1)
+    # dy = width*np.sin(t2)
 
     glBegin(GL_QUADS)
-    vertex(a.x-dx, a.y+dy)
-    vertex(a.x+dx, a.y-dy)
-    vertex(b.x+dx, b.y-dy)
-    vertex(b.x-dx, b.y+dy)
+    # vertex(a.x-dx, a.y+dy)
+    # vertex(a.x+dx, a.y-dy)
+    # vertex(b.x+dx, b.y-dy)
+    # vertex(b.x-dx, b.y+dy)
+
+    dx = width*np.cos(theta)
+    dy = width*np.sin(theta)
+    vertex(i1.x, i1.y)
+    vertex(i1.x+dx, i1.y+dy)
+    vertex(i2.x+dx, i2.y+dy)
+    vertex(i2.x, i2.y)
     glEnd()
     glColor3f(1, 1, 0)
-    displayDashedLine(a, b)
+
 
 def displayRoads(map):
-    i = 0
+
+    #silly little trick for only displaying a dashed line once on two way roads
+    completed_paths = []
     for road in map.edges_iter():
-        i += 1
-        displayRoad(road[0],road[1])
+        angle = map[road[0]][road[1]]['angle']
+        displayRoad(road[0],road[1],angle)
+        completed_paths.append((road[0],road[1]))
+        #only print the dashed line after both directions have been completed
+        if (road[1],road[0]) in completed_paths:
+            displayDashedLine(road[0],road[1])
+
+
     glColor3f(1, 1, 1)
 
     for i in map.nodes():
