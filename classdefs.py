@@ -100,6 +100,96 @@ def add_vehicle(self, origin=None, destination=None):
         r_id.append(i.id)
     print 'route: ',r_id
 
+#add an advanced initialization step after the network has been defined to the NetworkX DiGraph object
+def add_network_attributes(self):
+    # first we add the lengths of the road to each edge
+    # and the angle of each road from each intersection
+    for i1 in self.nodes_iter():
+        x1 = float(i1.x)
+        y1 = float(i1.y)
+        for i2 in self.neighbors(i1):
+            x2 = float(i2.x)
+            y2 = float(i2.y)
 
+            self[i1][i2]['distance']= np.sqrt((x1-x2)**2 + (y1-y2)**2)
+            # calculating the angle is oddly difficult. Maybe I'm missing a simple method
+
+            if x1 == x2 and y2>y1:
+                self[i1][i2]['angle'] = 0
+            if x1 == x2 and y2<y1:
+                self[i1][i2]['angle'] = np.pi
+            if x2>x1 and y2>=y1:
+                self[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1))
+            if x2>x1 and y2<y1:
+                self[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi*2
+            if x2<x1:
+                self[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi
+
+            #identify the nodes that have a two way street between them
+            if i1 in self.neighbors(i2):
+                self[i1][i2]['symmetric'] = True
+            else:
+                self[i1][i2]['symmetric'] = False
+
+        # now I want to match up through ways. ie, when going straight, which road goes to which road
+
+        #create a list of the angles of each intersection, sorted
+        angles = []
+        for i2 in self.neighbors(i1):
+            angles.append(self[i1][i2]['angle'])
+        angles.sort()
+        #verify that the roads aren't too close too each other
+        for i in range(len(angles)-1):
+            if angles[i+1]-angles[i]<(np.pi/6):
+                print 'Intersections at ',i1.x,i1.y
+                print 'Angles ',angles[i+1],angles[i]
+                raise ValueError('One of your intersections has an angle that is too small')
+
+
+        #using the sorted angles we're going to create a list of the interesections sorted by angle
+        #note that is this legal because we have already proved that all the angles are distinct
+        ints_by_angle = []
+
+        for i in range(len(angles)):
+            for i2 in self.neighbors(i1):
+                if self[i1][i2]['angle']==angles[i]:
+                    ints_by_angle.append(i2)
+
+        self.node[i1]['cnx']=[None,None]
+
+        if len(angles)==1:
+            self.node[i1]['cnx'][0] = [ints_by_angle[0]]
+        elif len(angles)==2:
+            #if the angle between the roads are between 2pi/3 and 4pi/3 then it is a str8 road with lighted crosswalk
+            #else they take turns going through the intersection
+            if 2*np.pi/3 < (angles[1]-angles[0]) < 4*np.pi/3:
+                self.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
+            else:
+                self.node[i1]['cnx'][0] = [ints_by_angle[0]]
+                self.node[i1]['cnx'][1] = [ints_by_angle[1]]
+
+        elif len(angles)==3:
+            #when there are three in an intersection, the two that have the greatest angle between them become connected
+            if (angles[1]-angles[0]) >= np.maximum((angles[2]-angles[1]),(2*np.pi + (angles[0]-angles[2]))):
+                self.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
+                self.node[i1]['cnx'][1] = [ints_by_angle[2]]
+            elif (angles[2]-angles[1]) >= np.maximum((2*np.pi + (angles[0]-angles[2])),(angles[1]-angles[0])):
+                self.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[2]]
+                self.node[i1]['cnx'][1] = [ints_by_angle[0]]
+            else:
+                self.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[2]]
+                self.node[i1]['cnx'][1] = [ints_by_angle[1]]
+        elif len(angles)==4:
+            self.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[3]]
+            self.node[i1]['cnx'][1] = [ints_by_angle[0],ints_by_angle[2]]
+        # an intersection with 1 or >4 neighbors wtf???
+        else:
+            print 'Angle ct ',len(angles)
+            print 'Intersection at ',i1.x,i1.y
+            raise ValueError('One of your intersections has >4 roads coming out of it')
+
+    #End add_network_attributes()
+
+nx.DiGraph.add_network_attributes = add_network_attributes
 nx.DiGraph.add_vehicle = add_vehicle
 nx.DiGraph.Vehicles = []

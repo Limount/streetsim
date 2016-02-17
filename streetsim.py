@@ -13,6 +13,8 @@ from classdefs import *
 from displayFunctions import *
 from globalvars import WIN_X,WIN_Y,FRAME_RATE
 import pandas as pd
+import sys
+import getopt
 
 
 ## some API in the chain is translating the keystrokes to this octal string
@@ -96,113 +98,54 @@ def display():
     #more GL related stuff i dont really understad
     glutSwapBuffers()
 
-def add_network_attributes(map):
-    # first we add the lengths of the road to each edge
-    # and the angle of each road from each intersection
-    for i1 in map.nodes_iter():
-        x1 = float(i1.x)
-        y1 = float(i1.y)
-        for i2 in map.neighbors(i1):
-            x2 = float(i2.x)
-            y2 = float(i2.y)
+def map_from_argfile(argv):
+    if 'streetsim.py' in argv[0]:
+        argv = argv[1:]
+    print argv
+    try:
+        opts, args = getopt.getopt(argv,'hi:',["mapfile="])
+    except getopt.GetoptError:
+        print 'streetsim.py -i <mapfile.ssm>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'Sorry, good luck'
+            sys.exit()
+        elif opt in ("-i", "--mapfile"):
+            inputfile = arg
 
-            map[i1][i2]['distance']= np.sqrt((x1-x2)**2 + (y1-y2)**2)
-            # calculating the angle is oddly difficult. Maybe I'm missing a simple method
+        with open('default.ssm', 'r') as f:
+            ssm = f.read()
+        locationsraw = ssm.split(';\n')[0]
+        relationsraw = ssm.split(';\n')[1]
+        locations = []
+        for l in locationsraw.split('\n'):
+            locations.append(l.split(','))
+        print locations
+        relations = []
+        for r in relationsraw.split('\n'):
+            relations.append(r.split(','))
+        print relations
 
-            if x1 == x2 and y2>y1:
-                map[i1][i2]['angle'] = 0
-            if x1 == x2 and y2<y1:
-                map[i1][i2]['angle'] = np.pi
-            if x2>x1 and y2>=y1:
-                map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1))
-            if x2>x1 and y2<y1:
-                map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi*2
-            if x2<x1:
-                map[i1][i2]['angle'] = np.arctan((y2-y1)/(x2-x1)) + np.pi
+        map = nx.DiGraph()
 
-            #identify the nodes that have a two way street between them
-            if i1 in map.neighbors(i2):
-                map[i1][i2]['symmetric'] = True
-            else:
-                map[i1][i2]['symmetric'] = False
+        intersections = []
+        for i in locations:
 
-        # now I want to match up through ways. ie, when going straight, which road goes to which road
+            intersections.append(Intersection(int(i[0]),int(i[1])))
 
-        #create a list of the angles of each intersection, sorted
-        angles = []
-        for i2 in map.neighbors(i1):
-            angles.append(map[i1][i2]['angle'])
-        angles.sort()
-        #verify that the roads aren't too close too each other
-        for i in range(len(angles)-1):
-            if angles[i+1]-angles[i]<(np.pi/6):
-                print 'Intersections at ',i1.x,i1.y
-                print 'Angles ',angles[i+1],angles[i]
-                raise ValueError('One of your intersections has an angle that is too small')
+        for r in relations:
+            map.add_edge(intersections[int(r[0])],intersections[int(r[1])])
+
+        return map
 
 
-        #using the sorted angles we're going to create a list of the interesections sorted by angle
-        #note that is this legal because we have already proved that all the angles are distinct
-        ints_by_angle = []
-
-        for i in range(len(angles)):
-            for i2 in map.neighbors(i1):
-                if map[i1][i2]['angle']==angles[i]:
-                    ints_by_angle.append(i2)
-
-        map.node[i1]['cnx']=[None,None]
-
-        if len(angles)==1:
-            map.node[i1]['cnx'][0] = [ints_by_angle[0]]
-        elif len(angles)==2:
-            #if the angle between the roads are between 2pi/3 and 4pi/3 then it is a str8 road with lighted crosswalk
-            #else they take turns going through the intersection
-            if 2*np.pi/3 < (angles[1]-angles[0]) < 4*np.pi/3:
-                map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
-            else:
-                map.node[i1]['cnx'][0] = [ints_by_angle[0]]
-                map.node[i1]['cnx'][1] = [ints_by_angle[1]]
-
-        elif len(angles)==3:
-            #when there are three in an intersection, the two that have the greatest angle between them become connected
-            if (angles[1]-angles[0]) >= np.maximum((angles[2]-angles[1]),(2*np.pi + (angles[0]-angles[2]))):
-                map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[1]]
-                map.node[i1]['cnx'][1] = [ints_by_angle[2]]
-            elif (angles[2]-angles[1]) >= np.maximum((2*np.pi + (angles[0]-angles[2])),(angles[1]-angles[0])):
-                map.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[2]]
-                map.node[i1]['cnx'][1] = [ints_by_angle[0]]
-            else:
-                map.node[i1]['cnx'][0] = [ints_by_angle[0],ints_by_angle[2]]
-                map.node[i1]['cnx'][1] = [ints_by_angle[1]]
-        elif len(angles)==4:
-            map.node[i1]['cnx'][0] = [ints_by_angle[1],ints_by_angle[3]]
-            map.node[i1]['cnx'][1] = [ints_by_angle[0],ints_by_angle[2]]
-        # an intersection with 1 or >4 neighbors wtf???
-        else:
-            print 'Angle ct ',len(angles)
-            print 'Intersection at ',i1.x,i1.y
-            raise ValueError('One of your intersections has >4 roads coming out of it')
-
-
-
-
-
-
-    #End add_network_attributes()
 
 
 init_time = int(time())
 dur = 0
 pause = False
 
-Is = [Intersection(100,100),
-      Intersection(220,100),
-      Intersection(400,160),
-      Intersection(300,300),
-      Intersection(440,300),
-      Intersection(520,80),
-      Intersection(200,50),
-      Intersection(110,280)]
 #once you have created your full list of Intersections, then you can add the paths between them.
 # this does not feel like ideal programming practice, but I can't figure out the best way to do this
 
@@ -213,25 +156,10 @@ def two_way_edge(map,i1,i2):
 times = []
 distances = []
 
+map = map_from_argfile(sys.argv)
 
-
-
-map = nx.DiGraph()
-#add roads that connect the intersections
-two_way_edge(map,Is[0],Is[1])
-#two_way_edge(map,Is[1],Is[2])
-map.add_edge(Is[1],Is[2])
-two_way_edge(map,Is[1],Is[3])
-two_way_edge(map,Is[2],Is[4])
-two_way_edge(map,Is[2],Is[5])
-two_way_edge(map,Is[3],Is[4])
-two_way_edge(map,Is[4],Is[5])
-two_way_edge(map,Is[6],Is[5])
-two_way_edge(map,Is[6],Is[1])
-two_way_edge(map,Is[7],Is[0])
-two_way_edge(map,Is[7],Is[3])
 #give each edge a distance attribute using the coordinates of each intersection
-add_network_attributes(map)
+map.add_network_attributes()
 
 
 for i in range(10):
